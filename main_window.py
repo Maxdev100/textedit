@@ -1,6 +1,10 @@
 from tkinter import filedialog, messagebox, ttk
 from search_window import SearchWindow
 from tkinter import *
+import run_code
+
+
+# ИСПРАВИТЬ НЕВОЗМОЖНОСТЬ ЗАПУСКАТЬ ФАЙЛЫ С РУССКИМ ИМЕНЕМ!!
 
 
 # 1. Сделать возможность открыть окно поиска только 1 раз
@@ -19,15 +23,17 @@ class MainWindow:
                          ('Python скрипт', '*.py'),
                          ('BAT скрипт', '*.bat'),
                          ('VBS скрипт', '*.vbs')]
-    file_path = None
+
     is_file_changed = False
     not_saved_sign = "*"
     font_size_change_step = 2
     font_size = 24
     font_name = "Calibri"
 
-    def __init__(self, title: str, window_size_x: int, window_size_y: int, resizable: bool):
+    def __init__(self, title: str, window_size_x: int, window_size_y: int, resizable: bool, file=None):
         self.textfield = None
+        self.file_path = file
+
         self.app = Tk()
         self.app.title(title)
         self.app.geometry(f"{window_size_x}x{window_size_y}")
@@ -44,6 +50,10 @@ class MainWindow:
         self.init_widgets()
         self.init_menu()
 
+        # Если при открытии приложения указан файл
+        if self.file_path is not None:
+            self.open_file()
+
         self.app.mainloop()
 
     # Widgets initialization
@@ -57,7 +67,7 @@ class MainWindow:
         textframe.grid_propagate(False)
         textframe.pack(fill=BOTH, expand=True)
 
-        self.textfield = Text(textframe, font=(self.font_name, self.font_size), wrap=NONE)
+        self.textfield = Text(textframe, font=(self.font_name, self.font_size), wrap=NONE, undo=True)
         self.set_textfield_data("")
         self.textfield.bind("<Key>", self.key_pressed)  # File changed
 
@@ -85,17 +95,28 @@ class MainWindow:
 
         # EDITOR ACTIONS
         editmenu = Menu(main_menu, tearoff=0)
-        editmenu.add_command(label="Увеличить шрифт    (Ctrl+MouseWheel)", command=lambda: self.inc_font_size(size_step=13))
-        editmenu.add_command(label="Уменьшить шрифт  (Ctrl+MouseWheel)", command=lambda: self.dec_font_size(size_step=13))
+        editmenu.add_command(label="Увеличить шрифт    (Ctrl+MouseWheel)",
+                             command=lambda: self.inc_font_size(size_step=13))
+        editmenu.add_command(label="Уменьшить шрифт  (Ctrl+MouseWheel)",
+                             command=lambda: self.dec_font_size(size_step=13))
 
         editmenu.add_separator()
-        editmenu.add_radiobutton(label="Без переноса текста", value=0, selectcolor="#006400", variable=self.text_wrap_type, command=self.check_text_wrap_radiobutton)
-        editmenu.add_radiobutton(label="Перенос текста по словам", value=1, selectcolor="#006400", variable=self.text_wrap_type, command=self.check_text_wrap_radiobutton)
-        editmenu.add_radiobutton(label="Перенос текста по буквам", value=2, selectcolor="#006400", variable=self.text_wrap_type, command=self.check_text_wrap_radiobutton)
+        editmenu.add_radiobutton(label="Без переноса текста", value=0, selectcolor="#006400",
+                                 variable=self.text_wrap_type, command=self.check_text_wrap_radiobutton)
+        editmenu.add_radiobutton(label="Перенос текста по словам", value=1, selectcolor="#006400",
+                                 variable=self.text_wrap_type, command=self.check_text_wrap_radiobutton)
+        editmenu.add_radiobutton(label="Перенос текста по буквам", value=2, selectcolor="#006400",
+                                 variable=self.text_wrap_type, command=self.check_text_wrap_radiobutton)
 
         editmenu.add_separator()
         editmenu.add_command(label="Поиск по тексту       Ctrl+F", command=lambda: SearchWindow(self))
         editmenu.add_command(label="Сброс выделения    Ctrl+D", command=self.deselect)
+
+        editmenu.add_command(label="Назад                          Ctrz+Z", command=lambda: self.textfield.edit_undo())
+
+        # RUN ACTIONS
+        runmenu = Menu(main_menu, tearoff=0)
+        runmenu.add_command(label="Запустить скрипт", command=lambda: run_code.run(self.file_path))
 
         # Adding cascade FILE
         main_menu.add_cascade(label="Файл", menu=filemenu)
@@ -103,10 +124,15 @@ class MainWindow:
         # Adding Cascade EDIT
         main_menu.add_cascade(label="Редактор", menu=editmenu)
 
+        # Adding cascade RUN
+        main_menu.add_cascade(label="Запуск", menu=runmenu)
+
     # Deselecting text which selected in FIND window
     def deselect(self):
-        try: self.textfield.tag_delete("highlightline")
-        except Exception: pass
+        try:
+            self.textfield.tag_delete("highlightline")
+        except Exception:
+            pass
 
     # Dialog window when closing program
     def ask_save_when_closing(self, exit_program=True):
@@ -124,7 +150,6 @@ class MainWindow:
                 return False
         else:
             if exit_program: self.app.destroy()
-
 
     # Checking text-warp rediobuttons if pressed
     def check_text_wrap_radiobutton(self):
@@ -152,19 +177,27 @@ class MainWindow:
         else:
             self.save_as()
 
-    def open_file(self):
-        if self.ask_save_when_closing(exit_program=False) != False:
-            file_path = filedialog.askopenfile(title="Открыть")
-            if hasattr(file_path, 'name'):
-                try:
-                    self.file_path = file_path.name
-                    file = open(self.file_path, "r", encoding="utf-8")
-                    self.set_textfield_data(file.read())
-                    file.close()
-                    self.app.title(self.file_path)
-                except Exception:
-                    messagebox.showerror(title="Ошибка открытия", message="Не удалось открыть файл!")
-
+    def open_file(self, filepath=None):
+        if filepath is not None:
+            if self.ask_save_when_closing(exit_program=False) != False:
+                file_path = filedialog.askopenfile(title="Открыть")
+                if hasattr(file_path, 'name'):
+                    try:
+                        self.file_path = file_path.name
+                        file = open(self.file_path, "r", encoding="utf-8")
+                        self.set_textfield_data(file.read())
+                        file.close()
+                        self.app.title(self.file_path)
+                    except Exception:
+                        messagebox.showerror(title="Ошибка открытия", message="Не удалось открыть файл!")
+        else:
+            try:
+                file = open(self.file_path, "r", encoding="utf-8")
+                self.set_textfield_data(file.read())
+                file.close()
+                self.app.title(self.file_path)
+            except Exception:
+                messagebox.showerror(title="Ошибка открытия", message="Не удалось открыть файл!")
 
     def save_as(self):
         file_path = filedialog.asksaveasfile(filetypes=self.avaible_filetypes, defaultextension="txt",
@@ -199,7 +232,8 @@ class MainWindow:
                                      "Left", "Right", "Up", "Down", "Escape", "Caps_Lock",
                                      "F1", "F2", "F3", "F4", "F5", "F6", "F7",
                                      "F8", "F9", "F10", "F01", "F12", "Control-s",
-                                     "Control-w", "Control-o", "Control-d", "Control-f"] and event.state not in [131080, 12]):
+                                     "Control-w", "Control-o", "Control-d", "Control-f"] and event.state not in [131080,
+                                                                                                                 12]):
             self.app.title(f"{self.not_saved_sign}{title}")
             self.is_file_changed = True
 
