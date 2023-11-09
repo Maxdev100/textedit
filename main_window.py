@@ -9,7 +9,7 @@ from tkinter import *
 # размер шрифта по умолчанию
 # 4. Сделать возможность копировать и вставлять текст
 # 5. Сделать контекстное меню при нажатии правой кнопкой мышки (Копировать, вставить (если нечего - неактивно), искать выделенный текст)
-# 7. Исправить баг с невозможностью открыть не текстовые файлы и баг с кодировкой (также сделать выбор кодировки и конвертацию кодировок)
+# 7. Cделать выбор кодировки и конвертацию кодировок
 
 
 # Main Window (init and widgets)
@@ -103,10 +103,12 @@ class MainWindow:
         # Adding Cascade EDIT
         main_menu.add_cascade(label="Редактор", menu=editmenu)
 
+    # Deselecting text which selected in FIND window
     def deselect(self):
         try: self.textfield.tag_delete("highlightline")
         except Exception: pass
 
+    # Dialog window when closing program
     def ask_save_when_closing(self, exit_program=True):
         if self.is_file_changed == True:
             res = messagebox.askyesnocancel(title="Сохранить изменения в файле?", message=f"Сохранить файл?")
@@ -133,6 +135,7 @@ class MainWindow:
         elif self.text_wrap_type.get() == 2:
             self.textfield.configure(wrap=CHAR)
 
+    # Saving file
     def save(self):
         # If file already opened
         if self.file_path is not None:
@@ -155,12 +158,13 @@ class MainWindow:
             if hasattr(file_path, 'name'):
                 try:
                     self.file_path = file_path.name
-                    file = open(self.file_path, "r")
+                    file = open(self.file_path, "r", encoding="utf-8")
                     self.set_textfield_data(file.read())
                     file.close()
                     self.app.title(self.file_path)
                 except Exception:
                     messagebox.showerror(title="Ошибка открытия", message="Не удалось открыть файл!")
+
 
     def save_as(self):
         file_path = filedialog.asksaveasfile(filetypes=self.avaible_filetypes, defaultextension="txt",
