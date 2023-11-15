@@ -2,6 +2,7 @@ from tkinter import filedialog, messagebox, ttk
 from search_window import SearchWindow
 from tkinter import *
 import run_code
+from github_autoupdate_lib.ppupdater.updater import *
 
 
 # ИСПРАВИТЬ НЕВОЗМОЖНОСТЬ ЗАПУСКАТЬ ФАЙЛЫ С РУССКИМ ИМЕНЕМ!!
@@ -30,7 +31,8 @@ class MainWindow:
     font_size = 24
     font_name = "Calibri"
 
-    def __init__(self, title: str, window_size_x: int, window_size_y: int, resizable: bool, file=None):
+    def __init__(self, title: str, window_size_x: int, window_size_y: int, resizable: bool, current_version,
+                 file=None, new_ver_av=False):
         self.textfield = None
         self.file_path = file
 
@@ -53,6 +55,23 @@ class MainWindow:
         # Если при открытии приложения указан файл
         if self.file_path is not None:
             self.open_file()
+
+        # ЕСЛИ ВЫШЛО ОБНОВЛЕНИЕ
+        if new_ver_av:
+            start_update = messagebox.askyesno(title="Доступно обновление!", message="Установить прямо сейчас?")
+            # Если пользователь нажал ДА
+            if start_update:
+                updater = Updater(current_version=current_version, repository="https://github.com/Maxdev100/textedit",
+                              target_path="./", tag="textedit")
+                new_ver = updater.update()
+
+                # Запись в файл новой версии
+                version_file = open("version.txt", 'w')
+                version_file.write(str(new_ver))
+                version_file.close()
+
+                messagebox.showinfo(title="Обновление завершено", message=f"TextEdit обновился до версии {new_ver}. Перезапустите приложение для применения изменений!")
+                self.app.destroy()
 
         self.app.mainloop()
 
