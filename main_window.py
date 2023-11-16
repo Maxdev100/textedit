@@ -58,11 +58,16 @@ class MainWindow:
 
         # ЕСЛИ ВЫШЛО ОБНОВЛЕНИЕ
         if new_ver_av:
-            start_update = messagebox.askyesno(title="Доступно обновление!", message="Установить прямо сейчас?")
+            updater = Updater(current_version=current_version, repository="https://github.com/Maxdev100/textedit",
+                              target_path="./")
+
+            cfg_reader = ConfigReader(config_path=updater.updaterinfo_filename)
+
+            start_update = messagebox.askyesno(title="Доступно обновление!", message=f"Новая версия: {cfg_reader.read('version')}\n"
+                                                                                     f"Тип обновления: {cfg_reader.read('type')}\n"
+                                                                                     f"Описание: {cfg_reader.read('description')}\nУстановить прямо сейчас?")
             # Если пользователь нажал ДА
             if start_update:
-                updater = Updater(current_version=current_version, repository="https://github.com/Maxdev100/textedit",
-                              target_path="./", tag="textedit")
                 new_ver = updater.update()
 
                 # Запись в файл новой версии

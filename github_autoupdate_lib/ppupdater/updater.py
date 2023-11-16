@@ -4,7 +4,7 @@ import zipfile
 
 
 class Updater:
-    def __init__(self, repository, current_version: float, target_path: str, tag:str,
+    def __init__(self, repository, current_version: float, target_path: str,
                  updaterinfo_filename: str = "updater.txt", stable: bool = True):
         self.cfg = None
         self.updater_info_path = None
@@ -12,7 +12,6 @@ class Updater:
         self.current_version = current_version
         self.target_path = target_path
         self.last_version = None
-        self.tag = tag
         self.updater_path = "./ppupdater.py"
         self.only_stable = stable
         self.updaterinfo_filename = updaterinfo_filename
@@ -20,7 +19,12 @@ class Updater:
 
     def check_update(self):
         # Update config (changes, archive name, etc...)
-        updater_info_download_path = self.repository + f"/releases/download/{self.tag}/{self.updaterinfo_filename}"
+        # Получение адреса после переадресации с последней версии
+        req = Request(self.repository + f"/releases/latest", headers={'User-Agent': 'Mozilla/5.0'})
+        webpage = urlopen(req)
+        updater_info_download_path = webpage.geturl() + f"/{self.updaterinfo_filename}"
+        updater_info_download_path = updater_info_download_path.replace("tag", "download")
+
         self.updater_info_path = "updater.txt"
 
         # Скачивание файла с информацией о версии
@@ -41,7 +45,10 @@ class Updater:
     def update(self):
         self.check_update()
 
-        released_app_path = self.repository + f"/releases/download/{self.tag}/{self.cfg['archive_name']}"
+        req = Request(self.repository + f"/releases/latest", headers={'User-Agent': 'Mozilla/5.0'})
+        webpage = urlopen(req)
+        released_app_path = webpage.geturl() + f"/{self.cfg['archive_name']}"
+        released_app_path = released_app_path.replace("tag", "download")
 
         cache_path = self.cache_folder + '/' + self.cfg['archive_name']
 
@@ -59,7 +66,7 @@ class Updater:
         os.rmdir(self.cache_folder)
         os.remove(self.updater_info_path)
 
-        return self.last_version
+        return float(self.last_version)
 
 
 
@@ -70,7 +77,7 @@ class ConfigReader:
         self.delimiter = delimiter
 
     # Return dictionary
-    def read(self):
+    def read(self, param: str = None):
         cfg = open(self.config_path, 'r')
         data = cfg.read()
         cfg.close()
@@ -83,5 +90,7 @@ class ConfigReader:
             param = string.split(self.delimiter)
             params[param[0]] = param[1]
 
+        if param is not None:
+            return params
         return params
 

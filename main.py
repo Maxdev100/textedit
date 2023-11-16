@@ -10,7 +10,7 @@ filever.close()
 
 # Checking updates
 updater = Updater(current_version=current_version, repository="https://github.com/Maxdev100/textedit",
-                  target_path="./", tag="textedit")
+                  target_path="./")
 update_avail = updater.check_update()
 
 

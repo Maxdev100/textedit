@@ -1,5 +1,0 @@
-version:0.1
-description:Update test
-type:[NEW VERSION]
-archive_name:texteditor.zip
-ignore_updater:True
