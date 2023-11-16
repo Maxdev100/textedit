@@ -3,6 +3,7 @@ from search_window import SearchWindow
 from tkinter import *
 import run_code
 from github_autoupdate_lib.ppupdater.updater import *
+import threading
 
 
 # ИСПРАВИТЬ НЕВОЗМОЖНОСТЬ ЗАПУСКАТЬ ФАЙЛЫ С РУССКИМ ИМЕНЕМ!!
@@ -15,6 +16,8 @@ from github_autoupdate_lib.ppupdater.updater import *
 # 4. Сделать возможность копировать и вставлять текст
 # 5. Сделать контекстное меню при нажатии правой кнопкой мышки (Копировать, вставить (если нечего - неактивно), искать выделенный текст)
 # 7. Cделать выбор кодировки и конвертацию кодировок
+
+# ПОЧИНИТЬ НЕВОЗМОЖНОСТЬ ЗАКРЫТЬ ПРОГРАММУ СРАЗУ ИЗ ЗА РАБОТАЮЩЕГО ПОТОКА ПРОВЕРКИ ОБНОВЛЕНИЙ
 
 
 # Main Window (init and widgets)
@@ -32,9 +35,10 @@ class MainWindow:
     font_name = "Calibri"
 
     def __init__(self, title: str, window_size_x: int, window_size_y: int, resizable: bool, current_version,
-                 file=None, new_ver_av=False):
+                 file=None):
         self.textfield = None
         self.file_path = file
+        self.current_version = current_version
 
         self.app = Tk()
         self.app.title(title)
@@ -52,20 +56,32 @@ class MainWindow:
         self.init_widgets()
         self.init_menu()
 
+        self.update_thread = threading.Thread(target=self.init_updater)
+        self.update_thread.start()
+        #update_thread.join()
+
         # Если при открытии приложения указан файл
         if self.file_path is not None:
             self.open_file()
 
+        self.app.mainloop()
+
+    def exit(self):
+        self.update_thread.join()
+        self.app.destroy()
+
+    def init_updater(self):
         # ЕСЛИ ВЫШЛО ОБНОВЛЕНИЕ
-        if new_ver_av:
-            updater = Updater(current_version=current_version, repository="https://github.com/Maxdev100/textedit",
-                              target_path="./")
-
+        updater = Updater(current_version=self.current_version, repository="https://github.com/Maxdev100/textedit",
+                          target_path="./")
+        if updater.check_update():
             cfg_reader = ConfigReader(config_path=updater.updaterinfo_filename)
+            configs = cfg_reader.read()
 
-            start_update = messagebox.askyesno(title="Доступно обновление!", message=f"Новая версия: {cfg_reader.read('version')}\n"
-                                                                                     f"Тип обновления: {cfg_reader.read('type')}\n"
-                                                                                     f"Описание: {cfg_reader.read('description')}\nУстановить прямо сейчас?")
+            start_update = messagebox.askyesno(title="Доступно обновление!",
+                                               message=f"Новая версия: {configs['version']}\n"
+                                                       f"Тип обновления: {configs['type']}\n"
+                                                       f"Описание: {configs['description']}\n\nУстановить прямо сейчас?")
             # Если пользователь нажал ДА
             if start_update:
                 new_ver = updater.update()
@@ -75,10 +91,10 @@ class MainWindow:
                 version_file.write(str(new_ver))
                 version_file.close()
 
-                messagebox.showinfo(title="Обновление завершено", message=f"TextEdit обновился до версии {new_ver}. Перезапустите приложение для применения изменений!")
+                messagebox.showinfo(title="Обновление завершено",
+                                    message=f"TextEdit обновился до версии {new_ver}. Перезапустите приложение для применения изменений!")
                 self.app.destroy()
 
-        self.app.mainloop()
 
     # Widgets initialization
     def init_widgets(self):
@@ -165,15 +181,18 @@ class MainWindow:
             # Да
             if res:
                 self.save()
-                if exit_program: self.app.destroy()
+                if exit_program:
+                    self.exit()
             # Нет
             elif res == False:
-                if exit_program: self.app.destroy()
+                if exit_program:
+                    self.exit()
             # Отмена
             else:
                 return False
         else:
-            if exit_program: self.app.destroy()
+            if exit_program:
+                self.exit()
 
     # Checking text-warp rediobuttons if pressed
     def check_text_wrap_radiobutton(self):

@@ -90,7 +90,5 @@ class ConfigReader:
             param = string.split(self.delimiter)
             params[param[0]] = param[1]
 
-        if param is not None:
-            return params
         return params
 
